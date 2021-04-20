@@ -108,7 +108,8 @@ class SimSetup:
                  t_dur, len, wid, at_density,
                  dip, w0, t1, t2, gam_p_bloch_en,
                  n0, gam_n0, gam_n1, gam_n_tp, gam_n_tau0,
-                 fvtype, rand_things, n_plt_posns, E0):
+                 fvtype, v_sep,
+                 rand_things, n_plt_posns, E0):
 
         # Map the inputs into the class elements:
         self.nz = nz
@@ -132,12 +133,20 @@ class SimSetup:
         self.n_plt_posns = n_plt_posns
         self.E0 = E0
         self.rand_things = rand_things
+        self.fvtype = fvtype
+        self.v_sep = v_sep
 
         # Compute some constructs:
         self.natoms = self.len * np.pi * self.wid * self.wid * self.at_density
         self.dv = (2. * np.pi / self.t_dur) * self.c_light / self.w0
-        self.nch = 2 * self.nsb + 1
-        self.v_width = float(self.nch) * self.dv
+        if self.fvtype == 'plateau':
+            self.nch = 2 * self.nsb + 1
+            self.v_width = float(self.nch) * self.dv
+        elif self.fvtype == 'twoplateau':
+            self.nch = 4 * self.nsb + 2
+            self.v_width = float(2*self.nsb+1) * self.dv
+            self.delta_v = float(self.v_sep) * self.dv
+        # (Note: if in two plateau mode, v_width is the width of one plateau only)
 
         # Pumps
         self.gam_npr0 = 0.5 * self.gam_n0           # npr stands for "N primed", which is 0.5 the inversion
@@ -158,15 +167,26 @@ class SimSetup:
         for index in range(0, self.nsb + 1):
             if fvtype == 'plateau':
                 tempf = 1. / (self.v_width)
+                # Assign distribution values and velocity values
+                self.fv[index] = tempf
+                self.vels[index] = self.dv * float(index)
+                self.fv[-index] = tempf
+                self.vels[-index] = -self.dv * float(index)
+
+            elif fvtype == 'twoplateau':
+                tempf = 1. / (2. * self.v_width)
+                # Assign distribution values and velocity values
+                self.fv.fill(tempf)
+                # Left plateau velocities:
+                self.vels[self.nsb-index] = -.5 * self.delta_v - self.dv * float(index)
+                self.vels[self.nsb+index] = -.5 * self.delta_v + self.dv * float(index)
+                # Right plateau velocities:
+                self.vels[3*self.nsb+1-index] = .5 * self.delta_v - self.dv * float(index)
+                self.vels[3*self.nsb+1+index] = .5 * self.delta_v + self.dv * float(index)
+
             else:
                 print("Error: Invalid Fv distribution type. NOTE: GAUSSIAN DEPRECATED IN THIS CODE VERSION.")
                 raise ValueError
-
-            # Assign distribution values and velocity values
-            self.fv[index] = tempf
-            self.vels[index] = self.dv * float(index)
-            self.fv[-index] = tempf
-            self.vels[-index] = -self.dv * float(index)
 
         # Initial Bloch angle from Gross and Haroche
         self.theta0 = 2.0 / np.sqrt(self.natoms)

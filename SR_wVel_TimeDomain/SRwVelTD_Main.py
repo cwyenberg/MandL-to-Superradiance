@@ -74,6 +74,10 @@ gam_n_tau0 = 1.e7                           # Pump pulse delay (s).  PAPER_REF: 
 
 fvtype = 'plateau'                          # Velocity distribution profile type (string).  PAPER_REF: 'plateau'
 
+v_sep = 100                                 # Applies only if fvtye=='twoplateau'. Separation of two plateaus
+                                            #   in units of fundamental velocity differential dv=(2pi/T)c/omega_0
+                                            #   PAPER REF: N/A
+
 # Random settings
 rand_things = False                         # Toggle randomisation of polarisation phases and initial tipping angles
                                             #   PAPER_REF: False
@@ -81,13 +85,13 @@ n_rand_runs = 1                             # Number of multiple runs to do for 
 
 # Visualisation details:
 animate = True                              # Toggle to animate polarisation as simulation executes.
-                                            #   PAPER_REF: True but irrelevant
+                                            #   PAPER_REF: True but inconsequential to figures
 plotstep = 50                               # Number of time steps between visualisation frames of unfolding sim
                                             #   and between progress annunciation.
-                                            #   PAPER_REF: 50 but irrelevant
+                                            #   PAPER_REF: 50 but inconsequential to figures
 bandstep = 1                                # Visualise every bandstep^th velocity channel. i.e., if 10, only draw
                                             #   every tenth velocity channel when animating unfolding sim.
-                                            #   PAPER_REF: 1 but irrelevant
+                                            #   PAPER_REF: 1 but inconsequential to figures
 n_plt_posns = 20                            # Number of z-positions higher than z=0.0L to store transients of
                                             #   PAPER_REF: 5 to generate Figure 3, 20 to generate other figures
 
@@ -112,7 +116,8 @@ sim = SimSetup(nz, nt, nsch,
                t_dur, length, wid, at_density,
                dip, w0, t1, t2, gam_p_bloch_en,
                n0, gam_n0, gam_n1, gam_n_tp, gam_n_tau0,
-               fvtype, rand_things, n_plt_posns, E0)
+               fvtype, v_sep,
+               rand_things, n_plt_posns, E0)
 
 # Validate the stiffness of the simulation
 stiffness = sim.domega*sim.nsb*sim.dt
