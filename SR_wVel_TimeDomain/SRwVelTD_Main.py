@@ -38,21 +38,21 @@ import CorrFns                              # Correlation functions
 t_dur = 1.e8                                # Simulation time duration (s).  PAPER_REF: 1.e8
 
 # Simulation size parameters:
-nt = 500                                    # Number of time points.  PAPER_REF: 500
+nt = 1000                                    # Number of time points.  PAPER_REF: 500
 nz = 401                                    # Number of z posns.  PAPER_REF: 401
                                             #   should be (multiple of n_plt_posns) + 1
-nsch = 10                                   # Number of side channels.  PAPER_REF: 10
+nsch = 0                                   # Number of side channels.  PAPER_REF: 10
 
 # Simulation physical characteristics:
 length = 2.e15                              # Sample length (cm).  PAPER_REF: 2.e15
 wid = 5.4e7                                 # Sample radius (cm).  PAPER_REF: 5.4e7
 at_density = 1.5e-12                        # Atomic density (cm^{-3}).  PAPER_REF: 1.5e-12
 n0 = 1. * at_density                        # Initial pop inv (cm^{-3}).  PAPER_REF: 1.*at_density
-E0_VperM = 1.e-16                           # Incident electric field at z=0 (V/m).  PAPER_REF: 1.e-16
+E0_VperM = 0.                               # Incident electric field at z=0 (V/m).  PAPER_REF: 1.e-16
 
 # Medium properties
 debye = 3.33564e-28                         # C cm : CONSTANT : One Debye
-dip = 0.7 * debye                           # Dipole moment mat elt (C cm).  PAPER_REF: 0.7 * debye
+dip = .7 * debye                            # Dipole moment mat elt (C cm).  PAPER_REF: 0.7 * debye
 w0 = 2.*np.pi*6.7e9                         # Angular freq of emission (s^-1).  PAPER_REF: 2.*np.pi*6.7e9
 t1 = 1.64e7  # 1.64e7                       # Relaxation time constant (s).  PAPER_REF: 1.64e7
 t2 = 1.55e6  # 1.55e6                       # Dephasing time constant(s).  PAPER_REF: 1.55e6
@@ -73,8 +73,9 @@ gam_n_tp = 1.e6                             # Pump pulse duration (s).  PAPER_RE
 gam_n_tau0 = 1.e7                           # Pump pulse delay (s).  PAPER_REF: 1.e7 but irrelevant
 
 fvtype = 'plateau'                          # Velocity distribution profile type (string).  PAPER_REF: 'plateau'
+                                            #   Options: 'plateau', 'twoplateau'
 
-v_sep = 100                                 # Applies only if fvtye=='twoplateau'. Separation of two plateaus
+v_sep = 50                                  # Applies only if fvtye=='twoplateau'. Separation of two plateaus
                                             #   in units of fundamental velocity differential dv=(2pi/T)c/omega_0
                                             #   PAPER REF: N/A
 
@@ -86,7 +87,7 @@ n_rand_runs = 1                             # Number of multiple runs to do for 
 # Visualisation details:
 animate = True                              # Toggle to animate polarisation as simulation executes.
                                             #   PAPER_REF: True but inconsequential to figures
-plotstep = 50                               # Number of time steps between visualisation frames of unfolding sim
+plotstep = 10                                # Number of time steps between visualisation frames of unfolding sim
                                             #   and between progress annunciation.
                                             #   PAPER_REF: 50 but inconsequential to figures
 bandstep = 1                                # Visualise every bandstep^th velocity channel. i.e., if 10, only draw
@@ -120,8 +121,12 @@ sim = SimSetup(nz, nt, nsch,
                rand_things, n_plt_posns, E0)
 
 # Validate the stiffness of the simulation
-stiffness = sim.domega * sim.nsch * sim.dt
-print("The stiffness factor is " + str(stiffness))
+if fvtype == 'plateau':
+    stiffness = sim.domega * sim.nsch * sim.dt
+else:
+    stiffness = sim.domega * sim.dt * (sim.nsch + sim.v_sep)
+print("Using a velocity distribution of type: " + fvtype + ",")
+print("for which the stiffness factor is " + str(stiffness) + ".")
 if stiffness > 1.:
     print("WARNING: EXCESSIVE STIFFNESS")
 
@@ -131,7 +136,7 @@ int_trans_avg = np.zeros((sim.n_plt_posns, sim.nt), dtype=float)
 p_trans_avg = np.zeros((sim.n_plt_posns, sim.nch, sim.nt), dtype=complex)
 inv_trans_avg = np.zeros((sim.n_plt_posns, sim.nch, sim.nt), dtype=float)
 
-run_scalar = 1.0/float(n_rand_runs)         # Averaging factor
+run_scalar = 1. / float(n_rand_runs)         # Averaging factor
 
 # Simulate the system the requested number of times:
 for run in range(0, n_rand_runs):

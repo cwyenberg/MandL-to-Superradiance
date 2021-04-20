@@ -141,16 +141,15 @@ class SimSetup:
         self.dv = (2. * np.pi / self.t_dur) * self.c_light / self.w0
         if self.fvtype == 'plateau':
             self.nch = 2 * self.nsch + 1
-            self.v_width = float(self.nch) * self.dv
         elif self.fvtype == 'twoplateau':
             self.nch = 4 * self.nsch + 2
-            self.v_width = float(2 * self.nsch + 1) * self.dv
             self.delta_v = float(self.v_sep) * self.dv
+        self.v_width = float(2 * self.nsch + 1) * self.dv
         # (Note: if in two plateau mode, v_width is the width of one plateau only)
 
         # Pumps
-        self.gam_npr0 = 0.5 * self.gam_n0           # npr stands for "N primed", which is 0.5 the inversion
-        self.gam_npr1 = 0.5 * self.gam_n1
+        self.gam_npr0 = .5 * self.gam_n0           # npr stands for "N primed", which is 0.5 the inversion
+        self.gam_npr1 = .5 * self.gam_n1
 
         # Omega differential:
         self.domega = self.dv * self.w0 / self.c_light
@@ -166,17 +165,14 @@ class SimSetup:
         self.fv = np.empty(self.nch, dtype=float)
         for index in range(0, self.nsch + 1):
             if fvtype == 'plateau':
-                tempf = 1. / (self.v_width)
+                self.fv.fill(1. / self.v_width)
                 # Assign distribution values and velocity values
-                self.fv[index] = tempf
                 self.vels[index] = self.dv * float(index)
-                self.fv[-index] = tempf
                 self.vels[-index] = -self.dv * float(index)
 
             elif fvtype == 'twoplateau':
-                tempf = 1. / (2. * self.v_width)
                 # Assign distribution values and velocity values
-                self.fv.fill(tempf)
+                self.fv.fill(.5 / self.v_width)
                 # Left plateau velocities:
                 self.vels[self.nsch - index] = -.5 * self.delta_v - self.dv * float(index)
                 self.vels[self.nsch + index] = -.5 * self.delta_v + self.dv * float(index)
@@ -189,10 +185,10 @@ class SimSetup:
                 raise ValueError
 
         # Initial Bloch angle from Gross and Haroche
-        self.theta0 = 2.0 / np.sqrt(self.natoms)
-        self.npr_init = 0.5 * self.n0 * np.cos(self.theta0)  # nprimed is half the inversion level
+        self.theta0 = 2. / np.sqrt(self.natoms)
+        self.npr_init = .5 * self.n0 * np.cos(self.theta0)  # nprimed is half the inversion level
         # p_init is used as the real part of P^+, which is half the initial polarization (P=P^+ + P^-):
-        self.p_init = 0.5 * self.dip * self.n0 * np.sin(self.theta0)
+        self.p_init = .5 * self.dip * self.n0 * np.sin(self.theta0)
 
         # Randomize if requested
         if self.rand_things:
@@ -205,8 +201,8 @@ class SimSetup:
 
         # The following are time-varying values during the sim
         # (They must be computed prior to use):
-        self.gam_p_cur = 0.0    # No polarisation pump used in this sim, besides the so-called "Bloch pump"
-        self.gam_eval(0.0)      # Evaluate the value of the pumps at the starting point in time, tau=0.0
+        self.gam_p_cur = 0.    # No polarisation pump used in this sim, besides the so-called "Bloch pump"
+        self.gam_eval(0.)      # Evaluate the value of the pumps at the starting point in time, tau=0.0
 
         # Initialise the E field transient with the constant incident E field at z=0
         # (This array can be generalised to a time-dependent function as desired)
