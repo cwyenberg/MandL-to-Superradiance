@@ -115,8 +115,9 @@ sim = SimSetup(nz, nt, nsch,
                fvtype, rand_things, n_plt_posns, E0)
 
 # Validate the stiffness of the simulation
-print("The stiffness factor is " + str((sim.dv*sim.nsb)*sim.dt))
-if sim.dv*sim.nsb*sim.dt > 1.:
+stiffness = sim.domega*sim.nsb*sim.dt
+print("The stiffness factor is " + str(stiffness))
+if stiffness > 1.:
     print("WARNING: EXCESSIVE STIFFNESS")
 
 # Allocate the totalising (averaging) arrays

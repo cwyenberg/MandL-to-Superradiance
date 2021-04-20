@@ -14,7 +14,7 @@ mpl.use('TkAgg')
 def int_comp(self):
     # Compute my intensity profile
     # (across modes AND totalized):
-    self.int_tot = np.power(self.ep_re, 2)+np.power(self.ep_im, 2)
+    self.int_tot = np.power(self.ep_re, 2) + np.power(self.ep_im, 2)
 
 
 def atmfld_lin_comb(sf_a, atmfld_a, sf_b, atmfld_b, sim):
