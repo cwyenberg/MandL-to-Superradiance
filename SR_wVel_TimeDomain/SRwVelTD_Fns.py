@@ -69,7 +69,7 @@ def simulate(sim, animate, plotstep, bandstep):
     pump_transient[0] = sim.gam_npr_cur
 
     # Just a range to store the channels
-    chnls = range(-sim.nsb, sim.nsb + 1)
+    chnls = range(-sim.nsch, sim.nsch + 1)
 
     # Execute the simulation
     for t in range(1, sim.nt):

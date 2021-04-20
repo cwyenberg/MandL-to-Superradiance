@@ -120,7 +120,7 @@ sim = SimSetup(nz, nt, nsch,
                rand_things, n_plt_posns, E0)
 
 # Validate the stiffness of the simulation
-stiffness = sim.domega*sim.nsb*sim.dt
+stiffness = sim.domega * sim.nsch * sim.dt
 print("The stiffness factor is " + str(stiffness))
 if stiffness > 1.:
     print("WARNING: EXCESSIVE STIFFNESS")
@@ -180,10 +180,10 @@ print("Pulse width of {:.2e}".format(del_t) + " s.")
 x = np.linspace(0, t_dur, num=nt, endpoint=True)
 plt.cla()
 p_spectra = np.empty((sim.nch, sim.nt), dtype=float)
-for k in range(0, sim.nsb+1):
-    p_spectra[k+sim.nsb, :] = CorrFns.power_spectrum(p_trans_avg[-1, k, :])
-for k in range(sim.nsb+1, sim.nch):
-    p_spectra[k-sim.nsb-1, :] = CorrFns.power_spectrum(p_trans_avg[-1, k, :])
+for k in range(0, sim.nsch + 1):
+    p_spectra[k+sim.nsch, :] = CorrFns.power_spectrum(p_trans_avg[-1, k, :])
+for k in range(sim.nsch + 1, sim.nch):
+    p_spectra[k - sim.nsch - 1, :] = CorrFns.power_spectrum(p_trans_avg[-1, k, :])
 plt.imshow(np.transpose(p_spectra))
 plt.savefig("SpectralRaster", dpi=160)
 plt.cla()

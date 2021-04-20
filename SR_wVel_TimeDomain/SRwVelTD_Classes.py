@@ -22,7 +22,7 @@ class AtomFieldProfile:
 
         # Copy in helpful values:
         self.nz = sim.nz
-        self.nsb = sim.nsb
+        self.nsch = sim.nsch
         self.nch = sim.nch
 
         # Allocate the inversions and polarisations:
@@ -104,7 +104,7 @@ class SimSetup:
 
     # Class constructor:
     def __init__(self,
-                 nz, nt, nsb,
+                 nz, nt, nsch,
                  t_dur, len, wid, at_density,
                  dip, w0, t1, t2, gam_p_bloch_en,
                  n0, gam_n0, gam_n1, gam_n_tp, gam_n_tau0,
@@ -114,7 +114,7 @@ class SimSetup:
         # Map the inputs into the class elements:
         self.nz = nz
         self.nt = nt
-        self.nsb = nsb                      # "Side channels" from the paper is called "sidebands" here
+        self.nsch = nsch
         self.t_dur = t_dur
         self.len = len
         self.wid = wid
@@ -140,11 +140,11 @@ class SimSetup:
         self.natoms = self.len * np.pi * self.wid * self.wid * self.at_density
         self.dv = (2. * np.pi / self.t_dur) * self.c_light / self.w0
         if self.fvtype == 'plateau':
-            self.nch = 2 * self.nsb + 1
+            self.nch = 2 * self.nsch + 1
             self.v_width = float(self.nch) * self.dv
         elif self.fvtype == 'twoplateau':
-            self.nch = 4 * self.nsb + 2
-            self.v_width = float(2*self.nsb+1) * self.dv
+            self.nch = 4 * self.nsch + 2
+            self.v_width = float(2 * self.nsch + 1) * self.dv
             self.delta_v = float(self.v_sep) * self.dv
         # (Note: if in two plateau mode, v_width is the width of one plateau only)
 
@@ -164,7 +164,7 @@ class SimSetup:
         self.vels = np.empty(self.nch, dtype=float)
         # Allocate distribution:
         self.fv = np.empty(self.nch, dtype=float)
-        for index in range(0, self.nsb + 1):
+        for index in range(0, self.nsch + 1):
             if fvtype == 'plateau':
                 tempf = 1. / (self.v_width)
                 # Assign distribution values and velocity values
@@ -178,11 +178,11 @@ class SimSetup:
                 # Assign distribution values and velocity values
                 self.fv.fill(tempf)
                 # Left plateau velocities:
-                self.vels[self.nsb-index] = -.5 * self.delta_v - self.dv * float(index)
-                self.vels[self.nsb+index] = -.5 * self.delta_v + self.dv * float(index)
+                self.vels[self.nsch - index] = -.5 * self.delta_v - self.dv * float(index)
+                self.vels[self.nsch + index] = -.5 * self.delta_v + self.dv * float(index)
                 # Right plateau velocities:
-                self.vels[3*self.nsb+1-index] = .5 * self.delta_v - self.dv * float(index)
-                self.vels[3*self.nsb+1+index] = .5 * self.delta_v + self.dv * float(index)
+                self.vels[3 * self.nsch + 1 - index] = .5 * self.delta_v - self.dv * float(index)
+                self.vels[3 * self.nsch + 1 + index] = .5 * self.delta_v + self.dv * float(index)
 
             else:
                 print("Error: Invalid Fv distribution type. NOTE: GAUSSIAN DEPRECATED IN THIS CODE VERSION.")
