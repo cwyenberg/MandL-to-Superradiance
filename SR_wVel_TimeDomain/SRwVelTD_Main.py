@@ -2,7 +2,7 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~ SR_wVel_TimeDomain ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~ TIME DOMAIN SIMULATION OF THE VELOCITY DEPENDENT MB EQUATIONS ~~~~~~~~~~
 #
-# LAST UPDATE: 26 March 2021
+# LAST UPDATE: 9 September 2021
 #
 # SUPPLEMENTARY TO THE FOLLOWING PAPER:
 # "Generalisation of the Menegozzi & Lamb Maser Algorithm
@@ -12,140 +12,77 @@
 # This code simulates the MB equations across a velocity distribution, intended
 # specifically for the transient SR regime.
 #
-# Simulation parameters required to recover paper figures provided in comments
-# and flagged as PAPER_REF: NNN
+# Simulation parameters required to recover paper figures
+# provided in parameter file `params_MLPaper.py'
+#
+# CHANGELOG:
+#
+# 9 September 2021
+#  Migrated all parameters to a parameter file system and cleaned up the setup
+#  code appropriately. Introduced multiple parameter files, including one to
+#  recreate simulations from the triggered FRB paper,
+# 'Triggered superradiance and fast radio bursts',
+#  https://doi.org/10.1093/mnras/sty3046
 #
 #################################################################################
 
 # Import libraries
 import numpy as np
-import time                                 # For timing purposes
 import pickle                               # For saving out object data to plot in external script
 
-# plotting
-import matplotlib as mpl
-mpl.use('TkAgg')                            # Fixes a bug on Mac OSX
-import matplotlib.pyplot as plt
+# Plotting
 
 # Classes
 from SRwVelTD_Classes import SimSetup       # Simulation Parameter setup class
-from SRwVelTD_Fns import simulate           # simulation function
+from SRwVelTD_Fns import *
 
 # Fns
-import CorrFns                              # Correlation functions
+from CorrFns import *                            # Correlation functions
 
-# ~~~~~~~~~~~~~~~~~~ SIMULATION CONFIG DATA ~~~~~~~~~~~~~~~~~~~~~~
-t_dur = 1.e8                                # Simulation time duration (s).  PAPER_REF: 1.e8
+# ~~~~~~~~~~~~~~~~~~ IMPORT CONFIGURATION PARAMETERS ~~~~~~~~~~~~~~~~~~~~
+import params_MLPaper as params                # Change the parameter file name to suit simulation
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-# Simulation size parameters:
-nt = 1000                                    # Number of time points.  PAPER_REF: 500
-nz = 401                                    # Number of z posns.  PAPER_REF: 401
-                                            #   should be (multiple of n_plt_posns) + 1
-nsch = 0                                   # Number of side channels.  PAPER_REF: 10
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~ BEGIN SIMULATION ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-# Simulation physical characteristics:
-length = 2.e15                              # Sample length (cm).  PAPER_REF: 2.e15
-wid = 5.4e7                                 # Sample radius (cm).  PAPER_REF: 5.4e7
-at_density = 1.5e-12                        # Atomic density (cm^{-3}).  PAPER_REF: 1.5e-12
-n0 = 1. * at_density                        # Initial pop inv (cm^{-3}).  PAPER_REF: 1.*at_density
-E0_VperM = 0.                               # Incident electric field at z=0 (V/m).  PAPER_REF: 1.e-16
-
-# Medium properties
-debye = 3.33564e-28                         # C cm : CONSTANT : One Debye
-dip = .7 * debye                            # Dipole moment mat elt (C cm).  PAPER_REF: 0.7 * debye
-w0 = 2.*np.pi*6.7e9                         # Angular freq of emission (s^-1).  PAPER_REF: 2.*np.pi*6.7e9
-t1 = 1.64e7  # 1.64e7                       # Relaxation time constant (s).  PAPER_REF: 1.64e7
-t2 = 1.55e6  # 1.55e6                       # Dephasing time constant(s).  PAPER_REF: 1.55e6
-
-# Pump characteristics
-gam_n0 = n0 / t1                            # Inversion constant pump term (cm^{-3}/s).
-                                            #   PAPER_REF: n0 / t1
-gam_p_bloch_en = True                       # Toggle "Bloch angle pumping": to remain consistent with the SR
-                                            #   initial tipping angle prescription, enable this feature so that
-                                            #   the polarisation pumps along with any inversion pump, and in proportion
-                                            #   established by the initial tipping angle prescription;
-                                            #   i.e., Lambda^(P) = Lambda^(N) * d * sin(theta_0) at all times.
-                                            #   PAPER_REF: True
-
-# Pump pulse parameters
-gam_n1 = 0.                                 # Pump pulse amplitude (cm^-3 s^-1).  PAPER_REF: 0.
-gam_n_tp = 1.e6                             # Pump pulse duration (s).  PAPER_REF: 1.e6 but irrelevant
-gam_n_tau0 = 1.e7                           # Pump pulse delay (s).  PAPER_REF: 1.e7 but irrelevant
-
-fvtype = 'plateau'                          # Velocity distribution profile type (string).  PAPER_REF: 'plateau'
-                                            #   Options: 'plateau', 'twoplateau'
-
-v_sep = 50                                  # Applies only if fvtye=='twoplateau'. Separation of two plateaus
-                                            #   in units of fundamental velocity differential dv=(2pi/T)c/omega_0
-                                            #   PAPER REF: N/A
-
-# Random settings
-rand_things = False                         # Toggle randomisation of polarisation phases and initial tipping angles
-                                            #   PAPER_REF: False
-n_rand_runs = 1                             # Number of multiple runs to do for averaging.  PAPER_REF: 1
-
-# Visualisation details:
-animate = True                              # Toggle to animate polarisation as simulation executes.
-                                            #   PAPER_REF: True but inconsequential to figures
-plotstep = 10                                # Number of time steps between visualisation frames of unfolding sim
-                                            #   and between progress annunciation.
-                                            #   PAPER_REF: 50 but inconsequential to figures
-bandstep = 1                                # Visualise every bandstep^th velocity channel. i.e., if 10, only draw
-                                            #   every tenth velocity channel when animating unfolding sim.
-                                            #   PAPER_REF: 1 but inconsequential to figures
-n_plt_posns = 20                            # Number of z-positions higher than z=0.0L to store transients of
-                                            #   PAPER_REF: 5 to generate Figure 3, 20 to generate other figures
-
-# ~~~~~~~~~~~~~~~~~~~~~~~ END INPUT DATA ~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# BEGIN SIMULATION - NO USER ENTRY REQUIRED BEYOND THIS POINT
-
-print("simulating " + str(nt) + " timesteps...")        # Annunciate commencement of simulation
+print("simulating " + str(params.nt) + " timesteps...")        # Annunciate commencement of simulation
 simtime_start = time.time()                             # Start timing the simulation
 
 np.random.seed()    # Seed the random number generator
 
-# Compute some useful quantities
-E0 = 100. * E0_VperM                                    # E0 in units of kg cm / (s^2 C) (used by this simulator).
-
-if not rand_things:     # If we're not randomizing things, don't perform multiple runs
-    n_rand_runs = 1
+if not params.rand_things:     # If we're not randomizing things, don't perform multiple runs
+    params.n_rand_runs = 1
 
 # Call the SimSetup class to instantiate an object containing all the useful parameter values,
 #   and also initiate some arrays, helpful constants, pump values, and more. See class comments for more details.
-sim = SimSetup(nz, nt, nsch,
-               t_dur, length, wid, at_density,
-               dip, w0, t1, t2, gam_p_bloch_en,
-               n0, gam_n0, gam_n1, gam_n_tp, gam_n_tau0,
-               fvtype, v_sep,
-               rand_things, n_plt_posns, E0)
+sim = SimSetup(params)
 
 # Validate the stiffness of the simulation
-if fvtype == 'plateau':
+if params.fvtype == 'plateau':
     stiffness = sim.domega * sim.nsch * sim.dt
 else:
     stiffness = sim.domega * sim.dt * (sim.nsch + sim.v_sep)
-print("Using a velocity distribution of type: " + fvtype + ",")
+print("Using a velocity distribution of type: " + params.fvtype + ",")
 print("for which the stiffness factor is " + str(stiffness) + ".")
 if stiffness > 1.:
     print("WARNING: EXCESSIVE STIFFNESS")
 
 # Allocate the totalising (averaging) arrays
-e_field_trans_avg = np.zeros((sim.n_plt_posns, sim.nt), dtype=complex)
-int_trans_avg = np.zeros((sim.n_plt_posns, sim.nt), dtype=float)
-p_trans_avg = np.zeros((sim.n_plt_posns, sim.nch, sim.nt), dtype=complex)
-inv_trans_avg = np.zeros((sim.n_plt_posns, sim.nch, sim.nt), dtype=float)
+e_field_trans_avg = np.zeros((sim.n_plt_posns, sim.nt_frac), dtype=complex)
+int_trans_avg = np.zeros((sim.n_plt_posns, sim.nt_frac), dtype=float)
+p_trans_avg = np.zeros((sim.n_plt_posns, sim.nch, sim.nt_frac), dtype=complex)
+inv_trans_avg = np.zeros((sim.n_plt_posns, sim.nch, sim.nt_frac), dtype=float)
 
-run_scalar = 1. / float(n_rand_runs)         # Averaging factor
+run_scalar = 1. / float(params.n_rand_runs)         # Averaging factor
 
 # Simulate the system the requested number of times:
-for run in range(0, n_rand_runs):
-    print("Performing run " + str(run+1) + " of " + str(n_rand_runs) + "...")
+for run in range(0, params.n_rand_runs):
+    print("Performing run " + str(run+1) + " of " + str(params.n_rand_runs) + "...")
     (int_tot_transients,
      e_field_transients,
      p_transients,
      inv_transients,
-     pump_transient) = simulate(sim, animate, plotstep, bandstep)
+     pump_transient) = simulate(sim, params.animate, params.plotstep, params.bandstep)
     e_field_trans_avg += run_scalar * e_field_transients
     int_trans_avg += run_scalar * np.real(np.multiply(e_field_transients, np.conjugate(e_field_transients)))
     p_trans_avg += run_scalar * p_transients
@@ -174,7 +111,7 @@ print(intensity_string)
 print(energy_string)
 
 # Next, the width. We use a mean square deviation metric:
-tvec = np.linspace(0, t_dur, num=nt, endpoint=True)
+tvec = np.linspace(0, params.t_dur, num=params.nt, endpoint=True)
 int_sum = np.sum(int_trans_avg[sim.n_plt_posns-1, :])
 mean_t = np.dot(int_trans_avg[sim.n_plt_posns-1, :], tvec) / int_sum
 dev_vec = tvec - mean_t
@@ -182,13 +119,12 @@ del_t = (1.0/np.sqrt(int_sum)) * np.sqrt(np.dot(int_trans_avg[sim.n_plt_posns-1,
 print("Pulse width of {:.2e}".format(del_t) + " s.")
 
 # Save the spectrum:
-x = np.linspace(0, t_dur, num=nt, endpoint=True)
 plt.cla()
 p_spectra = np.empty((sim.nch, sim.nt), dtype=float)
 for k in range(0, sim.nsch + 1):
-    p_spectra[k+sim.nsch, :] = CorrFns.power_spectrum(p_trans_avg[-1, k, :])
+    p_spectra[k+sim.nsch, :] = power_spectrum(p_trans_avg[-1, k, :])
 for k in range(sim.nsch + 1, sim.nch):
-    p_spectra[k - sim.nsch - 1, :] = CorrFns.power_spectrum(p_trans_avg[-1, k, :])
+    p_spectra[k - sim.nsch - 1, :] = power_spectrum(p_trans_avg[-1, k, :])
 plt.imshow(np.transpose(p_spectra))
 plt.savefig("SpectralRaster", dpi=160)
 plt.cla()
