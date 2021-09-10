@@ -40,7 +40,7 @@ from SRwVelTD_Fns import *
 from CorrFns import *                            # Correlation functions
 
 # ~~~~~~~~~~~~~~~~~~ IMPORT CONFIGURATION PARAMETERS ~~~~~~~~~~~~~~~~~~~~
-import params_MLPaper as params                # Change the parameter file name to suit simulation
+import params_working as params                # Change the parameter filename to suit simulation
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~ BEGIN SIMULATION ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,7 +58,7 @@ if not params.rand_things:     # If we're not randomizing things, don't perform 
 sim = SimSetup(params)
 
 # Validate the stiffness of the simulation
-if params.fvtype == 'plateau':
+if (params.fvtype == 'plateau') or (params.fvtype == 'gaussian'):
     stiffness = sim.domega * sim.nsch * sim.dt
 else:
     stiffness = sim.domega * sim.dt * (sim.nsch + sim.v_sep)
@@ -111,16 +111,16 @@ print(intensity_string)
 print(energy_string)
 
 # Next, the width. We use a mean square deviation metric:
-tvec = np.linspace(0, params.t_dur, num=params.nt, endpoint=True)
+tvec = np.linspace(0, sim.t_dur_frac, num=sim.nt_frac, endpoint=True)
 int_sum = np.sum(int_trans_avg[sim.n_plt_posns-1, :])
 mean_t = np.dot(int_trans_avg[sim.n_plt_posns-1, :], tvec) / int_sum
 dev_vec = tvec - mean_t
-del_t = (1.0/np.sqrt(int_sum)) * np.sqrt(np.dot(int_trans_avg[sim.n_plt_posns-1, :], np.multiply(dev_vec, dev_vec)))
+del_t = (1./np.sqrt(int_sum)) * np.sqrt(np.dot(int_trans_avg[sim.n_plt_posns-1, :], np.multiply(dev_vec, dev_vec)))
 print("Pulse width of {:.2e}".format(del_t) + " s.")
 
 # Save the spectrum:
 plt.cla()
-p_spectra = np.empty((sim.nch, sim.nt), dtype=float)
+p_spectra = np.empty((sim.nch, sim.nt_frac), dtype=float)
 for k in range(0, sim.nsch + 1):
     p_spectra[k+sim.nsch, :] = power_spectrum(p_trans_avg[-1, k, :])
 for k in range(sim.nsch + 1, sim.nch):

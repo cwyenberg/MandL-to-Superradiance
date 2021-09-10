@@ -3,7 +3,7 @@
 # Pull in some functions:
 from SRwVelTD_Fns import *
 import SRwVelTD_RKFns
-
+import warnings
 
 class AtomFieldProfile:
     # A class for a profile of the atoms + field
@@ -261,10 +261,7 @@ class SimSetup:
 
         # p_init is used as P^+, which is half the initial polarization (P=P^+ + P^-):
         if self.p_tip_init:
-            self.p_init = .5 * self.dip * self.n0 * np.sin(self.rand_theta0s) * \
-                          (np.cos(self.rand_phases) + 1.j * np.sin(self.rand_phases))
-            # self.p_init = self.dip * self.n0 * np.sqrt(self.delta_v_eff / (self.v_width * self.natoms)) * \
-            #                 np.exp(1.j * self.rand_phases)
+            self.p_init = .5 * self.dip * self.n0 * np.sin(self.rand_theta0s) * np.exp(1.j * self.rand_phases)
         else:
             self.p_init = np.zeros((self.nch, self.nz), dtype=complex)
 
@@ -275,6 +272,7 @@ class SimSetup:
 
         # Construct the E field transient from the requested incident E field (at z=0) parameters (V/m)
         times = np.linspace(0., self.t_dur, self.nt)
+        warnings.filterwarnings("ignore")
         self.E0_trans = self.E0_pulse_amp / (
                 np.cosh((times - self.E0_pulse_time) / self.E0_pulse_width) ** 2.) \
                 + np.random.normal(loc=self.E0_mean, scale=self.E0_stdev, size=self.nt)
