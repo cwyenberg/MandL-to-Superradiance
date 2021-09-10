@@ -83,7 +83,7 @@ def auto_corr_viafft(data, normalize=True):
     result_shifted = np.fft.ifft(data_ac_dft)
 
     # Allocate result
-    result = np.empty(2*nt-1)
+    result = np.empty(2*nt-1, dtype=complex)
 
     # Flip the result
     result[0:nt] = result_shifted[nt-1:2*nt-1]
@@ -118,3 +118,11 @@ def power_spectrum(data, normalize=True):
         return result/float(nt)
     else:
         return result
+
+
+def gauss(x, amp, xos, wid):
+    return amp * np.exp(-((x-xos)/wid)**2)
+
+
+def lorentz(x, amp, wid):
+    return amp * wid / (x*x + wid*wid)

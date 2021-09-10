@@ -62,7 +62,7 @@ def t_step(self, sim):
     sim.gam_eval(t_float)
     atm_fld_rk1 = rk_t_term(self, self, sim, t_float)
 
-    t_float = sim.t_cur+.5*sim.dt
+    t_float = sim.t_cur + .5 * sim.dt
     sim.gam_eval(t_float)
     atm_fld_rk2_in = atmfld_lin_comb(.5, self, .5, atm_fld_rk1, sim)
     atm_fld_rk2 = rk_t_term(atm_fld_rk2_in, self, sim, t_float)
@@ -70,13 +70,25 @@ def t_step(self, sim):
     atm_fld_rk3_in = atmfld_lin_comb(.5, self, .5, atm_fld_rk2, sim)
     atm_fld_rk3 = rk_t_term(atm_fld_rk3_in, self, sim, t_float)
 
-    t_float = sim.t_cur+sim.dt
+    t_float = sim.t_cur + sim.dt
     sim.gam_eval(t_float)
     atm_fld_rk4 = rk_t_term(atm_fld_rk3, self, sim, t_float)
 
     atm_fld_tmp = atmfld_lin_comb(1./6., atm_fld_rk1, 1./3., atm_fld_rk2, sim)
     atm_fld_tmp = atmfld_lin_comb(1., atm_fld_tmp, 1./3., atm_fld_rk3, sim)
     atm_fld_tmp = atmfld_lin_comb(1., atm_fld_tmp, 1./6., atm_fld_rk4, sim)
+
+    # If the random polarisation initiation is enabled, it must be executed here:
+    # Conduct random polarisation initiation through a pump term, if enabled
+    if sim.en_rand_polinit:
+        init_prob = 1. - np.exp(-sim.dt / sim.t_classical)
+        for ch, z in np.ndindex(sim.nch, sim.nz):
+            if not sim.has_polarised[ch, z]:
+                if np.random.rand() < init_prob:
+                    atm_fld_tmp.pkp_re[ch, z] += sim.p_init[ch, z].real
+                    atm_fld_tmp.pkp_im[ch, z] += sim.p_init[ch, z].imag
+                    sim.has_polarised[ch, z] = True
+        atm_fld_tmp.prop_z(sim)
 
     # Assign:
     self.nkp_re = atm_fld_tmp.nkp_re
@@ -105,23 +117,39 @@ def rk_t_term(atm_fld_atdpt, atm_fld_prev, sim, t_float):
         vel = sim.vels[k]
 
         # Inversion has only a real part:
-        atm_fld_rk.nkp_re[k,:] = atm_fld_prev.nkp_re[k,:] + \
+        inv_noise = sim.gam_inv_noise * (1. - 2. * np.random.rand())
+        atm_fld_rk.nkp_re[k, :] = atm_fld_prev.nkp_re[k,:] + \
                                  tempf_a * (np.multiply(atm_fld_atdpt.ep_re, atm_fld_atdpt.pkp_im[k,:]) +
                                             np.multiply(atm_fld_atdpt.ep_im, atm_fld_atdpt.pkp_re[k,:])) - \
-                                 (sim.dt/sim.t1) * atm_fld_atdpt.nkp_re[k,:] + sim.dt * sim.gam_npr_cur
+                                 (sim.dt/sim.t1) * atm_fld_atdpt.nkp_re[k,:] + \
+                                 sim.dt * (sim.gam_npr_cur + inv_noise)
 
-        # Polarisations; the bloch pump term mimics spontaneous emission using the initial tipping angle of the sample
-        bloch_pump_angle = sim.w0 * (vel / sim.c_light) * t_float  # Bloch pump Doppler shifted
-        atm_fld_rk.pkp_re[k,:] = atm_fld_prev.pkp_re[k,:] - tempf_b * vel * atm_fld_atdpt.pkp_im[k,:] + \
-                                 tempf_c * np.multiply(atm_fld_atdpt.ep_im, atm_fld_atdpt.nkp_re[k,:]) - \
-                                 (sim.dt/sim.t2) * atm_fld_atdpt.pkp_re[k,:] + \
-                                 np.cos(bloch_pump_angle+sim.rand_phases[k]) * sim.dt * sim.gam_p_bloch * \
-                                 np.sin(sim.rand_theta0s[k])
-        atm_fld_rk.pkp_im[k,:] = atm_fld_prev.pkp_im[k,:] + tempf_b * vel * atm_fld_atdpt.pkp_re[k,:] + \
-                                 tempf_c * np.multiply(atm_fld_atdpt.ep_re, atm_fld_atdpt.nkp_re[k,:]) - \
-                                 (sim.dt/sim.t2) * atm_fld_atdpt.pkp_im[k,:] + \
-                                 np.sin(bloch_pump_angle+sim.rand_phases[k]) * sim.dt * sim.gam_p_bloch * \
-                                 np.sin(sim.rand_theta0s[k])
+        # Polarisations; the Bloch pump term mimics spontaneous emission using the initial tipping angle of the sample
+        pump_rot_angle = sim.w0 * (vel / sim.c_light) * t_float  # The Bloch pump is Doppler shifted
+
+        # Add noise to the pump if requested
+        stdevs = sim.gam_p_decoh_stdev * np.abs(atm_fld_rk.nkp_re[k, :]) / sim.n0
+        gam_p_decoh = np.multiply(np.random.normal(loc=0., scale=stdevs, size=sim.nz),
+                                    np.exp(2.j * np.pi * np.random.rand(sim.nz)))
+
+        # Randomly phase the pump
+        rand_phases_tmp = 2.*np.pi*np.random.rand(sim.nz)
+
+        atm_fld_rk.pkp_re[k, :] = atm_fld_prev.pkp_re[k, :] - tempf_b * vel * atm_fld_atdpt.pkp_im[k, :] + \
+                                 tempf_c * np.multiply(atm_fld_atdpt.ep_im, atm_fld_atdpt.nkp_re[k, :]) - \
+                                 (sim.dt/sim.t2) * atm_fld_atdpt.pkp_re[k, :] + sim.dt * (
+                                         sim.gam_p_bloch *
+                                         np.multiply(np.cos(pump_rot_angle+rand_phases_tmp),
+                                                     np.sin(sim.rand_theta0s[k, :]))
+                                         + gam_p_decoh.real)
+
+        atm_fld_rk.pkp_im[k, :] = atm_fld_prev.pkp_im[k, :] + tempf_b * vel * atm_fld_atdpt.pkp_re[k, :] + \
+                                 tempf_c * np.multiply(atm_fld_atdpt.ep_re, atm_fld_atdpt.nkp_re[k, :]) - \
+                                 (sim.dt/sim.t2) * atm_fld_atdpt.pkp_im[k, :] + sim.dt * (
+                                         sim.gam_p_bloch *
+                                         np.multiply(np.sin(pump_rot_angle+rand_phases_tmp),
+                                                     np.sin(sim.rand_theta0s[k, :]))
+                                         + gam_p_decoh.imag)
 
     # Propagate the electric field in z:
     atm_fld_rk.prop_z(sim)

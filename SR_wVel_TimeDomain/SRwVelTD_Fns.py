@@ -5,10 +5,8 @@ import numpy as np
 import SRwVelTD_Classes
 import time
 
-# plotting
-import matplotlib as mpl
+# Plotting
 import matplotlib.pyplot as plt
-mpl.use('TkAgg')
 
 
 def int_comp(self):
@@ -32,6 +30,30 @@ def atmfld_lin_comb(sf_a, atmfld_a, sf_b, atmfld_b, sim):
     return atmfld_ret
 
 
+def gaussian(size, wid):
+
+    hsize = int(size/2)
+    gaussian = np.exp(-((range(0, size)-hsize)/wid)**2) / (wid * np.sqrt(np.pi))
+
+    return np.roll(gaussian, hsize)
+
+
+def gauss_filter(arr, wid):
+    # Construct the filter
+    nt = arr.shape[0]
+    gaussian = np.empty(nt, dtype=float)
+    for ind in range(-int(nt/2), int(nt/2)):
+        gaussian[ind] = np.exp(-(float(ind)/float(wid))**2.) / (wid * np.sqrt(np.pi))
+
+    arr_fft = np.fft.fft(arr)
+    gaussian_fft = np.fft.fft(gaussian)
+    fft_filtered = np.multiply(np.conj(arr_fft), gaussian_fft)
+
+    arr_filtered = np.fft.ifft(fft_filtered).real
+
+    return np.flip(arr_filtered)
+
+
 def simulate(sim, animate, plotstep, bandstep):
     # Perform one simulation (of potentially multiple if averaging)
 
@@ -41,38 +63,38 @@ def simulate(sim, animate, plotstep, bandstep):
 
     # Allocate the Atom and Field Class;
     # Force a propagation upon allocation:
-    Atm_Fld = SRwVelTD_Classes.AtomFieldProfile(sim, sim.npr_init, sim.p_init, force_propz=True)
+    Atm_Fld = SRwVelTD_Classes.AtomFieldProfile(sim, init=True, force_propz=True)
 
     # Allocate total intensity transients
-    int_tot_transients = np.empty((sim.n_plt_posns, sim.nt), dtype=float)
+    int_tot_transients = np.zeros((sim.n_plt_posns, sim.nt_frac), dtype=float)
 
     # Compute the starting intensities
     Atm_Fld.int_comp()
 
     # Plot the electric field
-    e_field_transients = np.empty((sim.n_plt_posns, sim.nt), dtype=complex)
+    e_field_transients = np.empty((sim.n_plt_posns, sim.nt_frac), dtype=complex)
     for z_zone in range(0, sim.n_plt_posns):
         z_ind = int((z_zone + 1) * (sim.nz-1) / sim.n_plt_posns)
         e_field_transients[z_zone, 0] = Atm_Fld.ep_re[z_ind] + 1.j * Atm_Fld.ep_im[z_ind]
         int_tot_transients[z_zone, 0] = Atm_Fld.int_tot[z_ind]
 
     # Allocate and initialize the polarization and inversion trends
-    p_transients = np.empty((sim.n_plt_posns, sim.nch, sim.nt), dtype=complex)
-    inv_transients = np.empty((sim.n_plt_posns, sim.nch, sim.nt), dtype=float)
+    p_transients = np.empty((sim.n_plt_posns, sim.nch, sim.nt_frac), dtype=complex)
+    inv_transients = np.empty((sim.n_plt_posns, sim.nch, sim.nt_frac), dtype=float)
     for z_zone in range(0, sim.n_plt_posns):
         z_ind = int((z_zone + 1) * (sim.nz-1) / sim.n_plt_posns)
         inv_transients[z_zone, :, 0] = Atm_Fld.nkp_re[:, z_ind]
         p_transients[z_zone, :, 0] = Atm_Fld.pkp_re[:, z_ind] + Atm_Fld.pkp_im[:, z_ind] * 1j
 
     # Allocate the pump transient and initialize
-    pump_transient = np.empty(sim.nt, dtype=float)
+    pump_transient = np.empty(sim.nt_frac, dtype=float)
     pump_transient[0] = sim.gam_npr_cur
 
     # Just a range to store the channels
     chnls = range(0, sim.nch)
 
     # Execute the simulation
-    for t in range(1, sim.nt):
+    for t in range(1, sim.nt_frac):
 
         if t % plotstep == 1 or plotstep == 1:
             t_start = time.time()
@@ -85,7 +107,7 @@ def simulate(sim, animate, plotstep, bandstep):
         pump_transient[t] = sim.gam_npr_cur
         # Step forward in time
         Atm_Fld.t_step(sim)
-
+        # Compute the intensity for plotting
         Atm_Fld.int_comp()
 
         # Compile the transients
@@ -100,13 +122,21 @@ def simulate(sim, animate, plotstep, bandstep):
         # Timing and animation:
         if t % plotstep == 0:
 
-            # Animate if requested:
+            # Animate the intensity if requested:
             if animate:
-                for p in chnls:
-                    if p % bandstep == 0:
-                        plt.plot(Atm_Fld.pkp_re[p, :], linewidth=0.5)
+                # for p in chnls:
+                #     if p % bandstep == 0:
+                        # plt.plot(np.multiply(Atm_Fld.ep_re[:],Atm_Fld.ep_re[:])
+                        #          + np.multiply(Atm_Fld.ep_im[:],Atm_Fld.ep_im[:]), linewidth=.5)
+                        # plt.plot(Atm_Fld.pkp_re[p, :], linewidth=0.5)
+                        # plt.plot(np.angle(Atm_Fld.pkp_re[p, :] + 1.j * Atm_Fld.pkp_im[p,:]), linewidth=.5)
+                        # plt.plot(Atm_Fld.nkp_re[p, :], linewidth=.5)
+                plt.plot(int_tot_transients[sim.n_plt_posns-1, :], linewidth=.5)
+                # int_filtered = gauss_filter(int_tot_transients[sim.n_plt_posns-1,:], 50)
+                # plt.plot(int_filtered, linewidth=.5)
 
-                plt.title("Real part of polarisation")
+                plt.title('Intensity thus far')
+                plt.xlabel('time (steps)')
                 plt.show(block=False)
                 plt.pause(0.01)
                 plt.cla()
@@ -160,3 +190,40 @@ def highfreq_power_trans(transient, nmodes, ndsample=1):
             power_return[k, ndsample*tds:ndsample*tds+ndsample].fill(trans_power[k, tds])
 
     return modes_return, power_return
+
+
+def crop_fs(array, centre, bw):
+    # Crops the Fourier Series about the centre requested
+    #   to the bandwidth requested
+    hbw = int(bw/2)
+    length = array.shape[0]
+    array_fs = np.fft.fft(array)
+    fs_rolled = np.roll(array_fs, -centre)
+    fs_rolled[hbw:length-hbw+1].fill(0.+0.j)
+    fs_filtered = np.roll(fs_rolled, centre)
+
+    return np.fft.ifft(fs_filtered)
+
+
+def rot_view(array, centre, bw):
+    # Crops the Fourier Series about the centre requested
+    #   to the bandwidth requested
+    hbw = int(bw/2)
+    length = array.shape[0]
+    array_fs = np.fft.fft(array)
+    fs_rolled = np.roll(array_fs, -centre)
+    fs_rolled[hbw:length-hbw+1].fill(0.+0.j)
+
+    return np.fft.ifft(fs_rolled)
+
+
+def find_width(array):
+    # Find a characteristic width of a pulse
+    nx = array.shape[0]
+    x_vec = np.linspace(0, nx, num=nx, endpoint=False)
+    arr_sum = np.sum(array)
+    x_mean = np.dot(array, x_vec) / arr_sum
+    dev_vec = np.abs(x_vec - x_mean)
+    width = np.dot(dev_vec, array) / arr_sum
+
+    return width
