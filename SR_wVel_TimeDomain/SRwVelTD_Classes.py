@@ -140,6 +140,7 @@ class SimSetup:
         self.fvtype = params.fvtype
         self.tp_submode = params.tp_submode
         self.v_sep = params.v_sep
+        self.en_loc_popns = params.en_loc_popns
         self.t_char_expected = params.t_char_expected      # Expected characteristic timescale of an isolated channel
 
         # Expected local interaction zone
@@ -164,7 +165,10 @@ class SimSetup:
         self.natoms_per_zslice = float(self.natoms) / float(self.nz)
 
         # Effective number of interacting atoms
-        self.natoms_eff = self.natoms * self.delta_v_eff / self.v_width
+        if self.en_loc_popns:
+            self.natoms_eff = self.natoms * self.delta_v_eff / self.v_width
+        else:
+            self.natoms_eff = self.natoms
 
         # Time of onset of classical trajectory
         self.t_classical = 1. / (self.natoms_eff * self.gam_spont * self.mu)
@@ -187,8 +191,6 @@ class SimSetup:
                                  * np.sqrt(self.dt / self.t_classical) \
                                  * np.sqrt(self.dz / self.sample_len) \
                                  / (np.sqrt(self.natoms_eff) * self.t_classical)
-
-
 
         # Construct the velocity distribution array and velocity values array:
         # Allocate velocities:
@@ -247,7 +249,7 @@ class SimSetup:
             self.has_polarised = np.full((self.nch, self.nz), False)
 
         # Initial Bloch angle from Gross and Haroche
-        self.theta0 = 2. / np.sqrt(self.natoms)
+        self.theta0 = 2. / np.sqrt(self.natoms_eff)
         self.npr_init = .5 * self.n0 * np.cos(self.theta0)  # nprimed is half the inversion level
 
         # Randomize if requested
@@ -257,7 +259,7 @@ class SimSetup:
             # No random polarisation phases:
             self.rand_phases = np.zeros((self.nch, self.nz))
             # No random tipping angle:
-            self.rand_theta0s = np.full((self.nch, self.nz), 2. / np.sqrt(self.natoms))
+            self.rand_theta0s = np.full((self.nch, self.nz), 2. / np.sqrt(self.natoms_eff))
 
         # p_init is used as P^+, which is half the initial polarization (P=P^+ + P^-):
         if self.p_tip_init:

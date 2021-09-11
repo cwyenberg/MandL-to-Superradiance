@@ -3,10 +3,12 @@ import numpy as np
 # ~~~~~~~~~~~~~~~~~~ SIMULATION CONFIGURATION PARAMETER FILE ~~~~~~~~~~~~~~~~~~~~~~
 
 t_dur = 5.e7                                # Simulation time duration (s).
-t_sim_frac = .25                            # Fraction of t_dur to actually execute     N/A TO THIS PAPER
+t_sim_frac = .5                             # Fraction of t_dur to actually execute     N/A TO THIS PAPER
+en_loc_popns = True                         # Enable population count by number of molecules within
+                                            #  a local velocity neighbourhood defined by t_char_expected (next)
 t_char_expected = 1.e7                      # Expected characteristic time of pulse (s) N/A TO THIS PAPER
                                             #  (for velocity channel interaction neighbourhood sizing)
-stren_fac = 1.                              # An easy factor for adjusting a few inversion amplitude characteristics
+stren_fac = 10.                              # An easy factor for adjusting a few inversion amplitude characteristics
                                             #  N/A TO THIS PAPER
 size_fac = 10                               # An easy factor for adjusting simulation size
                                             #  N/A TO THIS PAPER
@@ -21,7 +23,7 @@ nsch = int(size_fac * 10)                                   # Number of side cha
 # Simulation physical characteristics:
 sample_len = 2.e13                          # Sample length (m).
 sample_rad = 5.4e5                          # Sample radius (m).
-at_density = size_fac * stren_fac * 5.e-6                         # Atomic density (m^{-3}).
+at_density = stren_fac * 4.e-6                         # Atomic density (m^{-3}).
 n0 = 1. * at_density                        # Initial pop inv (m^{-3}).
 
 # Medium properties
@@ -71,7 +73,7 @@ v_sep = 24.                                 # Applies only if fvtye=='twoplateau
 # Random settings
 rand_things = True                          # Toggle randomisation of polarisation phases and initial tipping angles
 n_rand_runs = 1                             # Number of multiple runs to do for averaging.
-en_rand_polinit = False                     # Enable randomised timing of polarisation initiation
+en_rand_polinit = True                      # Enable randomised timing of polarisation initiation
                                             #  as per a survival model of characteristic time t_classical
 
 # Visualisation details:

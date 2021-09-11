@@ -4,6 +4,8 @@ import numpy as np
 
 t_dur = 1.e-1                               # Simulation time duration (s).
 t_sim_frac = 1.                             # Fraction of t_dur to actually execute
+en_loc_popns = False                         # Enable population count by number of molecules within
+                                            #  a local velocity neighbourhood defined by t_char_expected (next)
 t_char_expected = 1.e7                      # Expected characteristic time of pulse (s)
                                             #  (for velocity channel interaction neighbourhood sizing)
 stren_fac = 1.                              # An easy factor for adjusting a few inversion amplitude characteristics
