@@ -40,7 +40,7 @@ from SRwVelTD_Fns import *
 from CorrFns import *                            # Correlation functions
 
 # ~~~~~~~~~~~~~~~~~~ IMPORT CONFIGURATION PARAMETERS ~~~~~~~~~~~~~~~~~~~~
-import params_working as params                # Change the parameter filename to suit simulation
+import params_cohtrigpulse as params                # Change the parameter filename to suit simulation
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~ BEGIN SIMULATION ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -49,9 +49,6 @@ print("simulating " + str(params.nt) + " timesteps...")        # Annunciate comm
 simtime_start = time.time()                             # Start timing the simulation
 
 np.random.seed()    # Seed the random number generator
-
-if not params.rand_things:     # If we're not randomizing things, don't perform multiple runs
-    params.n_rand_runs = 1
 
 # Call the SimSetup class to instantiate an object containing all the useful parameter values,
 #   and also initiate some arrays, helpful constants, pump values, and more. See class comments for more details.
@@ -76,13 +73,13 @@ inv_trans_avg = np.zeros((sim.n_plt_posns, sim.nch, sim.nt_frac), dtype=float)
 run_scalar = 1. / float(params.n_rand_runs)         # Averaging factor
 
 # Simulate the system the requested number of times:
-for run in range(0, params.n_rand_runs):
+for run in range(0, sim.n_rand_runs):
     print("Performing run " + str(run+1) + " of " + str(params.n_rand_runs) + "...")
     (int_tot_transients,
      e_field_transients,
      p_transients,
      inv_transients,
-     pump_transient) = simulate(sim, params.animate, params.plotstep, params.bandstep)
+     pump_transient) = simulate(sim)
     e_field_trans_avg += run_scalar * e_field_transients
     int_trans_avg += run_scalar * np.real(np.multiply(e_field_transients, np.conjugate(e_field_transients)))
     p_trans_avg += run_scalar * p_transients

@@ -143,6 +143,12 @@ class SimSetup:
         self.en_loc_popns = params.en_loc_popns
         self.t_char_expected = params.t_char_expected      # Expected characteristic timescale of an isolated channel
 
+        # Animation properties:
+        self.animate = params.animate
+        self.anim_type = params.anim_type
+        self.plotstep = params.plotstep
+        self.bandstep = params.bandstep
+
         # Expected local interaction zone
         self.delta_v_eff = 2. * np.pi * self.c_light / (self.t_char_expected * self.w0)
 
@@ -199,8 +205,9 @@ class SimSetup:
         self.fv = np.empty(self.nch, dtype=float)
         for index in range(0, self.nsch + 1):
             if self.fvtype == 'plateau':
-                self.fv[index] = 1. / self.v_width
-                self.fv[-index] = 1. / self.v_width
+                weight = 1. / self.v_width
+                self.fv[index] = weight  # * 2 * np.random.rand()  # Uncomment these for noisy Fv
+                self.fv[-index] = weight  # * 2 * np.random.rand()  # Uncomment these for noisy Fv
                 self.vels[index] = self.dv * float(index)
                 self.vels[-index] = -self.dv * float(index)
                 # ENABLE BELOW CODE FOR A COMB DISTRIBUTION:
@@ -253,9 +260,11 @@ class SimSetup:
         self.npr_init = .5 * self.n0 * np.cos(self.theta0)  # nprimed is half the inversion level
 
         # Randomize if requested
+        self.n_rand_runs = params.n_rand_runs
         if self.rand_things:
             self.randomize()    # Randomize all polarisation phases and initial Bloch angle near theta_0
         else:
+            self.n_rand_runs = 1
             # No random polarisation phases:
             self.rand_phases = np.zeros((self.nch, self.nz))
             # No random tipping angle:

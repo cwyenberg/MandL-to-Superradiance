@@ -54,7 +54,7 @@ def gauss_filter(arr, wid):
     return np.flip(arr_filtered)
 
 
-def simulate(sim, animate, plotstep, bandstep):
+def simulate(sim):
     # Perform one simulation (of potentially multiple if averaging)
 
     # Randomize the phases:
@@ -94,9 +94,10 @@ def simulate(sim, animate, plotstep, bandstep):
     chnls = range(0, sim.nch)
 
     # Execute the simulation
+    times = np.linspace(0., sim.t_dur_frac, num=sim.nt_frac, endpoint=True)
     for t in range(1, sim.nt_frac):
 
-        if t % plotstep == 1 or plotstep == 1:
+        if t % sim.plotstep == 1 or sim.plotstep == 1:
             t_start = time.time()
 
         # Perform a time step
@@ -120,23 +121,41 @@ def simulate(sim, animate, plotstep, bandstep):
             p_transients[z_zone, :, t] = Atm_Fld.pkp_re[:, z_ind] + Atm_Fld.pkp_im[:, z_ind] * 1j
 
         # Timing and animation:
-        if t % plotstep == 0:
+        if t % sim.plotstep == 0:
 
             # Animate the intensity if requested:
-            if animate:
-                # for p in chnls:
-                #     if p % bandstep == 0:
-                        # plt.plot(np.multiply(Atm_Fld.ep_re[:],Atm_Fld.ep_re[:])
-                        #          + np.multiply(Atm_Fld.ep_im[:],Atm_Fld.ep_im[:]), linewidth=.5)
-                        # plt.plot(Atm_Fld.pkp_re[p, :], linewidth=0.5)
-                        # plt.plot(np.angle(Atm_Fld.pkp_re[p, :] + 1.j * Atm_Fld.pkp_im[p,:]), linewidth=.5)
-                        # plt.plot(Atm_Fld.nkp_re[p, :], linewidth=.5)
-                plt.plot(int_tot_transients[sim.n_plt_posns-1, :], linewidth=.5)
-                # int_filtered = gauss_filter(int_tot_transients[sim.n_plt_posns-1,:], 50)
-                # plt.plot(int_filtered, linewidth=.5)
+            if sim.animate:
+                if sim.anim_type=='polangle':
+                    # ~~~~~~~~~ ENDFIRE ANGLE (CAN ENABLE RIEMANN SURFACE IF DESIRED) ~~~~~~~~~~~
+                    pkp_endfire = np.roll(Atm_Fld.pkp_re[:,sim.nz-1] + 1.j * Atm_Fld.pkp_im[:,sim.nz-1], sim.nsch)
+                    # pkp_endfire_continuation = riemmann_continuation(np.angle(pkp_endfire))
+                    # plt.plot(pkp_endfire_continuation, ls='', marker='o')
+                    plt.plot(np.angle(pkp_endfire), ls='', marker='o')
+                    plt.ylim(-np.pi, np.pi)
+                    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-                plt.title('Intensity thus far')
-                plt.xlabel('time (steps)')
+                if sim.anim_type == 'inv' or sim.anim_type == 'pol':
+                    for p in chnls:
+                        if p % sim.bandstep == 0:
+                            if sim.anim_type == 'inv':
+                                plt.plot(Atm_Fld.nkp_re[p, :], linewidth=.5)
+                                plt.title('Inversion Profiles')
+                                plt.xlabel('z Posn (steps)')
+                                plt.ylabel('Inversion')
+                            else:
+                                plt.plot(Atm_Fld.pkp_re[p, :], linewidth=0.5)
+                                plt.title('Polarisation Profiles')
+                                plt.xlabel('z Posn (steps)')
+                                plt.ylabel('Re Part of Polarisation')
+
+                elif sim.anim_type == 'int':
+                    plt.plot(times, int_tot_transients[sim.n_plt_posns-1, :], linewidth=.5)
+                    int_filtered = gauss_filter(int_tot_transients[sim.n_plt_posns-1,:], 50)
+                    # plt.plot(times, int_filtered, linewidth=.5)
+                    plt.title('Intensity thus far')
+                    plt.xlabel('Time (seconds)')
+                    plt.ylabel('Squared E Field')
+
                 plt.show(block=False)
                 plt.pause(0.01)
                 plt.cla()
@@ -227,3 +246,22 @@ def find_width(array):
     width = np.dot(dev_vec, array) / arr_sum
 
     return width
+
+
+def riemmann_continuation(array):
+    # Generates an extended Riemmann surface continuation of a collection of phase angles
+    #  which avoids rollover discontinuities at +/- pi.
+
+    nelts = array.shape[0]
+    continuation = np.empty(nelts)
+    continuation[0] = array[0]
+
+    for n in range(1, nelts):
+        if array[n] - array[n-1] > np.pi:
+            continuation[n] = continuation[n-1] + array[n] - array[n-1] - 2.*np.pi
+        elif array[n] - array[n-1] < -np.pi:
+            continuation[n] = continuation[n-1] + array[n] - array[n-1] + 2.*np.pi
+        else:
+            continuation[n] = continuation[n-1] + array[n] - array[n-1]
+
+    return continuation

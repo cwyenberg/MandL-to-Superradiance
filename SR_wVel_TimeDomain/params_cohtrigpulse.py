@@ -2,20 +2,26 @@ import numpy as np
 
 # ~~~~~~~~~~~~~~~~~~ SIMULATION CONFIGURATION PARAMETER FILE ~~~~~~~~~~~~~~~~~~~~~~
 
+anim_type = 'inv'                           # Choose what to animate; select from:
+                                            #  'inv' : inversion along length;
+                                            #  'pol' : real part of polarisation along length;
+                                            #  'polangle' : angle of polarisation across channels
+                                            #  'int' : endfire intensity cumulative history;
+
 t_dur = 5.e7                                # Simulation time duration (s).
 t_sim_frac = .5                             # Fraction of t_dur to actually execute     N/A TO THIS PAPER
 en_loc_popns = False                        # Enable population count by number of molecules within
                                             #  a local velocity neighbourhood defined by t_char_expected (next)
 t_char_expected = 1.e7                      # Expected characteristic time of pulse (s) N/A TO THIS PAPER
                                             #  (for velocity channel interaction neighbourhood sizing)
-stren_fac = 20.                            # An easy factor for adjusting a few inversion amplitude characteristics
+stren_fac = 10.                            # An easy factor for adjusting a few inversion amplitude characteristics
                                             #  N/A TO THIS PAPER
-size_fac = 40                                # An easy factor for adjusting simulation size
+size_fac = 10                                # An easy factor for adjusting simulation size
                                             #  N/A TO THIS PAPER
 pump_bw_fac = 1.                            # Adjusts the bandwidth of the pump pulse N/A TO THIS PAPER
 
 # Simulation size parameters:
-nt = 4000                                   # Number of time points.
+nt = 1000                                   # Number of time points.
 nz = 401                                    # Number of z posns.
                                             #  (should be a multiple of n_plt_posns + 1)
 nsch = int(size_fac * 10)                                   # Number of side channels.
@@ -23,7 +29,7 @@ nsch = int(size_fac * 10)                                   # Number of side cha
 # Simulation physical characteristics:
 sample_len = 2.e13                          # Sample length (m).
 sample_rad = 5.4e5                          # Sample radius (m).
-at_density = stren_fac * 2.e-6                         # Atomic density (m^{-3}).
+at_density = stren_fac * 3.e-6                         # Atomic density (m^{-3}).
 n0 = 1. * at_density                        # Initial pop inv (m^{-3}).
 
 # Medium properties
@@ -37,9 +43,9 @@ t2 = 1.55e6                                 # Dephasing time constant (s).
 E0_mean = 0.                                # Incident electric field mean at z=0 (V/m).
 E0_stdev = 0.                               # Incident electric field noise standard dev at z=0
                                             #  N/A TO THIS PAPER
-E0_pulse_amp = 0.                           # Incident electric field pulse amplitude (V/m) N/A TO THIS PAPER.
-E0_pulse_time = 4.85e-2                     # Incident electric field pulse delay time (s) N/A TO THIS PAPER
-E0_pulse_width = 5.4e-4                     # Incident electric field pulse width (s) N/A TO THIS PAPER
+E0_pulse_amp = 0. * 2.e-16                           # Incident electric field pulse amplitude (V/m) N/A TO THIS PAPER.
+E0_pulse_time = 1.e7                     # Incident electric field pulse delay time (s) N/A TO THIS PAPER
+E0_pulse_width = 2.e5                     # Incident electric field pulse width (s) N/A TO THIS PAPER
 
 # Pump characteristics
 gam_n0 = n0 / t1                            # Inversion constant pump term (m^{-3} s^{-1}).
@@ -78,14 +84,9 @@ en_rand_polinit = False                     # Enable randomised timing of polari
 
 # Visualisation details:
 animate = True                              # Toggle to animate polarisation as simulation executes.
-anim_type = 'int'                           # Choose what to animate; select from:
-                                            #  'inv' : inversion along length;
-                                            #  'pol' : real part of polarisation along length;
-                                            #  'polangle' : angle of polarisation across channels
-                                            #  'int' : endfire intensity cumulative history;
 plotstep = 10                               # Number of time steps between visualisation frames of unfolding sim
                                             #  and between progress annunciation.
-bandstep = max(int(nsch / 200), 1)          # Visualise every bandstep^th velocity channel. i.e., if 10, only draw
+bandstep = max(int(nsch / 40), 1)          # Visualise every bandstep^th velocity channel. i.e., if 10, only draw
                                             #  every tenth velocity channel when animating unfolding sim.
                                             # (Only applies if the user uncomments the code within the simulation
                                             #  loop which enables per-channel inversion or polarisation animation)
